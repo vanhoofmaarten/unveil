@@ -10,47 +10,83 @@
 
 ;(function($) {
 
-  $.fn.unveil = function(threshold, callback) {
+    $.fn.unveil = function(options, callback) {
 
-    var $w = $(window),
-        th = threshold || 0,
-        retina = window.devicePixelRatio > 1,
-        attrib = retina? "data-src-retina" : "data-src",
-        images = this,
-        loaded;
+        var settings = $.extend({
+                threshold : 0,
+                attribute : "data-src",
+                animation : "Animation--fade",
+                animationActivate : "is-in",
+            }, options);
 
-    this.one("unveil", function() {
-      var source = this.getAttribute(attrib);
-      source = source || this.getAttribute("data-src");
-      if (source) {
-        this.setAttribute("src", source);
-        if (typeof callback === "function") callback.call(this);
-      }
-    });
+        var images = this,
+            $window = $(window),
+            loaded;
 
-    function unveil() {
-      var inview = images.filter(function() {
-        var $e = $(this);
-        if ($e.is(":hidden")) return;
+        this.one("unveil", function() {
+            tag = this.tagName;
 
-        var wt = $w.scrollTop(),
-            wb = wt + $w.height(),
-            et = $e.offset().top,
-            eb = et + $e.height();
+            if (tag == "PICTURE"){
 
-        return eb >= wt - th && et <= wb + th;
-      });
+                var elements = [];
+                    sourceElement = this.getElementsByTagName("SOURCE"),
+                    imageElement =  this.getElementsByTagName("IMG");
 
-      loaded = inview.trigger("unveil");
-      images = images.not(loaded);
-    }
+                for (var i = 0; i < sourceElement.length; i++){
+                    var source = sourceElement[i].getAttribute(settings.attribute);
 
-    $w.on("scroll.unveil resize.unveil lookup.unveil", unveil);
+                    if (source) {
+                        sourceElement[i].setAttribute("srcset", source);
+                        if (typeof callback === "function") callback.call(sourceElement[i]);
+                    }
+                }
 
-    unveil();
+                for (var i = 0; i < imageElement.length; i++){
+                    var source = imageElement[i].getAttribute(settings.attribute);
 
-    return this;
+                    if (source) {
+                        imageElement[i].setAttribute("srcset", source);
+                        if (typeof callback === "function") callback.call(imageElement[i]);
+                    }
+                }
 
-  };
+            } else if (tag == "IMG") {
+                var source = this.getAttribute(settings.attribute);
 
-})(window.jQuery || window.Zepto);
+                if (source) {
+                    this.setAttribute("src", source);
+                    if (typeof callback === "function") callback.call(this);
+                }
+            }
+
+            this.classList.add(settings.animationActivate);
+        });
+
+        function unveil() {
+            var inview = images.filter(function() {
+                var $e = $(this);
+                if ($e.is(":hidden")) return;
+
+                $e.addClass(settings.animation);
+
+                var windowTop = $window.scrollTop(),
+                    windowBottom = windowTop + $window.height(),
+                    elementTop = $e.offset().top,
+                    elementBottom = elementTop + $e.height();
+
+                return elementBottom >= windowTop - settings.threshold && elementTop <= windowBottom + settings.threshold;
+            });
+
+            loaded = inview.trigger("unveil");
+            images = images.not(loaded);
+        }
+
+        $window.on("scroll.unveil resize.unveil lookup.unveil", unveil);
+
+        unveil();
+
+        return this;
+
+    };
+
+})(window.jQuery);
